@@ -1,11 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
-export default function Login() {
-  const [formData, setFormData] = useState({
-    username: "",
-    password: ""
-  });
+export default function Login({ setLoggedIn, setUsername }) {
+  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [error, setError] = useState(null);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
@@ -14,69 +14,53 @@ export default function Login() {
     });
   };
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [successMessage, setSuccessMessage] = useState(null);
-  const [error, setError] = useState(null);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLoading) {
-      return;
-    }
-
-    setIsLoading(true);
-
     try {
       const response = await axios.post("http://127.0.0.1:8000/api/login/", formData);
-      console.log("Success!", response.data);
-      setSuccessMessage("Login Successful!");
       localStorage.setItem("accessToken", response.data.tokens.access);
       localStorage.setItem("refreshToken", response.data.tokens.refresh);
+      setLoggedIn(true);
+      setUsername(response.data.username);
+      navigate("/home");
     } catch (error) {
-      console.log("Error during Login!", error.response?.data);
-      if (error.response && error.response.data) {
-        Object.keys(error.response.data).forEach(field => {
-          const errorMessages = error.response.data[field];
-          if (errorMessages && errorMessages.length > 0) {
-            setError(errorMessages[0]);
-          }
-        });
-      }
-    } finally {
-      setIsLoading(false);
+      setError("Login failed. Please try again.");
     }
   };
 
   return (
-    <div>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {successMessage && <p style={{ color: "green" }}>{successMessage}</p>}
-      <h2>Login:</h2>
-      <form>
-        <label>Username:</label>
-        <br />
-        <input
-          type="text"
-          name="username"
-          value={formData.username}
-          onChange={handleChange}
-        />
-        <br />
-        <br />
-        <label>Password:</label>
-        <br />
-        <input
-          type="password"
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-        />
-        <br />
-        <br />
-        <button type="submit" disabled={isLoading} onClick={handleSubmit}>
-          Login
-        </button>
-      </form>
+    <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+      <div className="card p-4" style={{ maxWidth: "400px", width: "100%" }}>
+        <h3 className="text-center mb-4">Login</h3>
+        {error && <p className="alert alert-danger">{error}</p>}
+        <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label htmlFor="username" className="form-label">Username:</label>
+            <input
+              type="text"
+              name="username"
+              className="form-control"
+              id="username"
+              value={formData.username}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <div className="mb-3">
+            <label htmlFor="password" className="form-label">Password:</label>
+            <input
+              type="password"
+              name="password"
+              className="form-control"
+              id="password"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
+          </div>
+          <button type="submit" className="btn btn-primary w-100">Login</button>
+        </form>
+      </div>
     </div>
   );
 }

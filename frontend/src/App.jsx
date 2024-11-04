@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
-import Header from "./components/Header"; // Import Header
+import Register from "./pages/Register";
+import Header from "./components/Header";
+import Sidebar from "./components/Sidebar"; // Import Sidebar
 import axios from "axios";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function App() {
   const [username, setUsername] = useState("");
@@ -11,9 +14,9 @@ function App() {
 
   useEffect(() => {
     const checkLoggedInUser = async () => {
-      try {
-        const token = localStorage.getItem("accessToken");
-        if (token) {
+      const token = localStorage.getItem("accessToken");
+      if (token) {
+        try {
           const config = {
             headers: {
               Authorization: `Bearer ${token}`
@@ -22,52 +25,58 @@ function App() {
           const response = await axios.get("http://127.0.0.1:8000/api/user/", config);
           setLoggedIn(true);
           setUsername(response.data.username);
-        } else {
+        } catch (error) {
           setLoggedIn(false);
           setUsername("");
         }
-      } catch (error) {
-        setLoggedIn(false);
-        setUsername("");
       }
     };
     checkLoggedInUser();
   }, []);
 
   const handleLogout = async () => {
-    try {
-      const accessToken = localStorage.getItem("accessToken");
-      const refreshToken = localStorage.getItem("refreshToken");
+    const accessToken = localStorage.getItem("accessToken");
+    const refreshToken = localStorage.getItem("refreshToken");
 
-      if (accessToken && refreshToken) {
+    if (accessToken && refreshToken) {
+      try {
         const config = {
           headers: {
             Authorization: `Bearer ${accessToken}`
           }
         };
         await axios.post("http://127.0.0.1:8000/api/logout/", { refresh: refreshToken }, config);
-        
-        // Clear tokens and update state
         localStorage.removeItem("accessToken");
         localStorage.removeItem("refreshToken");
         setLoggedIn(false);
         setUsername("");
-        console.log("Logout successful!");
+      } catch (error) {
+        console.error("Failed to logout", error.response?.data || error.message);
       }
-    } catch (error) {
-      console.error("Failed to logout", error.response?.data || error.message);
     }
   };
 
   return (
     <Router>
-      {/* Render Header on every page */}
       <Header isLoggedIn={isLoggedIn} username={username} onLogout={handleLogout} />
 
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-      </Routes>
+      <div className="d-flex">
+        {isLoggedIn && <Sidebar />} {/* Show Sidebar if logged in */}
+
+        <div className="flex-grow-1 p-4">
+          <Routes>
+            {/* Redirect to /home if logged in and accessing / */}
+            <Route 
+              path="/" 
+              element={isLoggedIn ? <Navigate to="/home" /> : <Login setLoggedIn={setLoggedIn} setUsername={setUsername} />} 
+            />
+            {/* Home route, only accessible if logged in */}
+            <Route path="/home" element={isLoggedIn ? <Home username={username} /> : <Navigate to="/" />} />
+            {/* Register route, only accessible if logged in */}
+            <Route path="/register" element={isLoggedIn ? <Register /> : <Navigate to="/" />} />
+          </Routes>
+        </div>
+      </div>
     </Router>
   );
 }
